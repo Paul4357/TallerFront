@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Modal, Box, Typography } from "@mui/material";
 import VuiInput from "components/VuiInput";
 import VuiButton from "components/VuiButton";
-
 import axios from "axios";
+
+import { toast } from "react-toastify";
 
 const modalStyle = {
   position: "absolute",
@@ -18,34 +19,42 @@ const modalStyle = {
   p: 4,
 };
 
-export default function UsuarioModal({ open, onClose, formData, setFormData, onSubmit }) {
+export default function UsuarioModal({ open, onClose, formData, setFormData, onSubmit, usuario }) {
+  // Si es un usuario para editar, asignamos sus datos al formulario.
+  useEffect(() => {
+    if (usuario) {
+      setFormData({
+        nombre: usuario.nombre,
+        email: usuario.email,
+        password: "", // No se edita la contraseña aquí.
+        cargo: usuario.cargo,
+      });
+    }
+  }, [usuario, setFormData]);
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // Manejo de la sumisión del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);
     try {
-      // Datos al backend
-      const response = await axios.post("http://localhost:4000/api/usuarios/crear", formData);
-      console.log("Usuario agregado:", response.data);
+      if (usuario) {
+        const response = await axios.put(
+          `http://localhost:4000/api/usuarios/actualizar/${usuario.idUsuario}`,
+          formData
+        );
+        toast.success("Usuario actualizado con éxito 💾");
+        onSubmit(response.data);
+      } else {
+        const response = await axios.post("http://localhost:4000/api/usuarios/crear", formData);
+        toast.success("Usuario agregado correctamente 🎉");
+        onSubmit(response.data);
+      }
 
-      // Función onSubmit (para realizar cualquier acción después del envío)
-      onSubmit(response.data);
-
-      // Cerrar la modal después de guardar
       onClose();
-
-      // Limpiar el formulario
-      setFormData({
-        nombre: "",
-        email: "",
-        password: "",
-        cargo: "",
-      });
+      setFormData({ nombre: "", email: "", password: "", cargo: "" });
     } catch (error) {
-      console.error("Error al agregar el usuario:", error);
-      // Manejo de errores.
+      console.error("Error al guardar el usuario:", error);
+      toast.error("Ocurrió un error al guardar el usuario 🚫");
     }
   };
 
@@ -53,7 +62,7 @@ export default function UsuarioModal({ open, onClose, formData, setFormData, onS
     <Modal open={open} onClose={onClose}>
       <Box sx={modalStyle}>
         <Typography variant="h5" mb={3} color="white" fontWeight="bold">
-          Agregar Usuario
+          {usuario ? "Editar Usuario" : "Agregar Usuario"}
         </Typography>
         <form onSubmit={handleSubmit}>
           <Box display="flex" flexDirection="column" gap={2}>
@@ -88,10 +97,9 @@ export default function UsuarioModal({ open, onClose, formData, setFormData, onS
             />
           </Box>
 
-          {/* Separación entre inputs y botón */}
           <Box mt={3}>
             <VuiButton type="submit" color="info" fullWidth>
-              Guardar Usuario
+              {usuario ? "Guardar Cambios" : "Guardar Usuario"}
             </VuiButton>
           </Box>
         </form>
